@@ -32,7 +32,7 @@ function theme_islandora_solr_metadata_management_table(array $variables) {
     'rows' => $rows,
     'attributes' => array('id' => $table_id),
     'empty' => t('There are no entries available.'),
-  ),
+  )
   );
   $output .= drupal_render_children($table);
   drupal_add_tabledrag($table_id, 'order', 'sibling', $weight_class);
