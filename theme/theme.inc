@@ -268,10 +268,10 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, &$solr_fie
             // Deal with other solr field as source for the hyperlink.
             if ($field_config['field_ashyperlink_pre'] == 1) {
               $hyperlink = isset($solr_results_doc[$field_config['field_ashyperlink']]) ?
-                trim($solr_results_doc[$field_config['field_ashyperlink']]) : FALSE;
+                (array) $solr_results_doc[$field_config['field_ashyperlink']] : array();
 
-              if ($hyperlink) {
-                return l($value, $hyperlink, array(
+              if (count($hyperlink)) {
+                return l($value, $hyperlink[0], array(
                   'attributes' => array(
                     'target' => '_blank',
                   ),
