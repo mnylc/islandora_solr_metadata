@@ -335,7 +335,8 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, &$solr_fie
         if (($field['field_aslabel_pre'] == 1) && isset($solr_results_doc[$field['field_aslabel']])) {
           // Use  $field['field_aslabel'] solr field as label,
           // if that is exists but is empty default to the original label.
-          $field['display_label'] = trim($solr_results_doc[$field['field_aslabel']]) ? trim($solr_results_doc[$field['field_aslabel']]) : $field['display_label'];
+          $possible_label = isset($solr_results_doc[$field['field_aslabel']]) ? (array) $solr_results_doc[$field['field_aslabel']] : (array) $field['display_label']; 
+          $field['display_label'] = trim(reset($possible_label));
         }
 
         // Check if the field is configured to filter based on whole field.
