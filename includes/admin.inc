@@ -19,13 +19,15 @@ function islandora_solr_metadata_admin_page_callback() {
       'field_config' => array(
         '#type' => 'fieldset',
         '#title' => t('Field Configuration'),
-        '#group' => 'tabset',
+        '#group' => 'islandora_solr_metadata_admin_tabset',
+        '#id' => 'islandora_solr_metadata_admin_tab',
         'form' => drupal_get_form('islandora_solr_metadata_admin_form'),
       ),
       'general_config' => array(
         '#type' => 'fieldset',
         '#title' => t('General Configuration'),
-        '#group' => 'tabset',
+        '#group' => 'islandora_solr_metadata_admin_tabset',
+        '#id' => 'islandora_solr_metadata_general_admin_tab',
         'form' => drupal_get_form('islandora_solr_metadata_general_admin_form'),
       ),
     ),
