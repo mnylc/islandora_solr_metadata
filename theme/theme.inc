@@ -194,6 +194,14 @@ function template_process_islandora_solr_metadata_description(array &$variables)
  *   we use:
  *   - hyperlink: An optional boolean indicating if the given value should be
  *     rendered a link.
+ *   - field_ashyperlink_pre: An optional boolean indicating if another field´s
+ *     value should be used as link (href) for this one.
+ *   - field_ashyperlink: the field name that should be used if
+ *     field_ashyperlink_pre evaluates to TRUE.
+ *   - field_aslabel_pre: An optional boolean indicating if another field´s
+ *     value should be used as label for this one.
+ *   - field_aslabel: the field name that should be used as label if
+ *   - field_aslabel_pre evaluates to TRUE.
  *   - weight: An optional weight we will use to sort the values.
  *   - formatter: An optional callable to which we will call with each value
  *     from the given field, to return alternate text or markup as desired.
@@ -202,7 +210,7 @@ function template_process_islandora_solr_metadata_description(array &$variables)
  *   TRUE if we have found a document for the object in question; otherwise,
  *   FALSE.
  */
-function islandora_solr_metadata_query_fields(AbstractObject $object, &$solr_fields) {
+function islandora_solr_metadata_query_fields(AbstractObject $object, array &$solr_fields) {
   module_load_include('inc', 'islandora_solr', 'includes/utilities');
   if (!empty($solr_fields)) {
     global $user;
@@ -214,6 +222,7 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, &$solr_fie
     if ($query_processor->islandoraSolrResult['response']['numFound'] > 0) {
       $solr_results_doc = $query_processor->islandoraSolrResult['response']['objects']['0']['solr_doc'];
       // Ensure we only provide results for what is specified.
+      // NEVER empty $solr_results_doc, we need it for cross field references.
       $constrained_results = array_intersect_key($solr_results_doc, $solr_fields);
       // If field_ashyperlink and/or field_aslabel are used we have to use
       // $solr_results_doc again to fetch those values since they will not be
@@ -228,10 +237,13 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, &$solr_fie
           // Defaults for field_ashyperlink and field_aslabel are not needed
           // assuming that if the corresponding _pre fields are == 1 then
           // those will exist, if not, then they are not needed.
+          // But for sake of correctness we will add them.
           $field_config = $solr_fields[$solr_field] + array(
             'hyperlink' => 0,
             'field_ashyperlink_pre' => 0,
+            'field_ashyperlink' => '',
             'field_aslabel_pre' => 0,
+            'field_aslabel' => '',
             'formatter' => NULL,
             'uri_replacement' => '',
             'date_format' => '',
@@ -290,7 +302,7 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, &$solr_fie
 
             // Deal with other solr field as source for the hyperlink.
             if ($field_config['field_ashyperlink_pre'] == 1) {
-              $hyperlink = isset($solr_results_doc[$field_config['field_ashyperlink']]) ?
+              $hyperlink = !empty($solr_results_doc[$field_config['field_ashyperlink']]) ?
                 (array) $solr_results_doc[$field_config['field_ashyperlink']] : array();
 
               if (count($hyperlink)) {
@@ -351,14 +363,16 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, &$solr_fie
         $field = $field + array(
           'hyperlink' => 0,
           'field_ashyperlink_pre' => 0,
+          'field_ashyperlink' => '',
           'field_aslabel_pre' => 0,
+          'field_aslabel' => '',
           'formatter' => NULL,
           'uri_replacement' => '',
         );
-        if (($field['field_aslabel_pre'] == 1) && isset($solr_results_doc[$field['field_aslabel']])) {
+        if (($field['field_aslabel_pre'] == 1) && !empty(trim($solr_results_doc[$field['field_aslabel']]))) {
           // Use  $field['field_aslabel'] solr field as label,
           // if that is exists but is empty default to the original label.
-          $possible_label = isset($solr_results_doc[$field['field_aslabel']]) ? (array) $solr_results_doc[$field['field_aslabel']] : (array) $field['display_label']; 
+          $possible_label = isset($solr_results_doc[$field['field_aslabel']]) ? (array) $solr_results_doc[$field['field_aslabel']] : (array) $field['display_label'];
           $field['display_label'] = trim(reset($possible_label));
         }
 
