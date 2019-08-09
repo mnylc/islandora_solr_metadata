@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * Houses the form and utilities used in islandora_solr_metadata configurations.
@@ -34,6 +35,7 @@ function islandora_solr_metadata_config_form($form, &$form_state, $configuration
       $form_state['field_data'][$field_name] = array(
         'configuration_id' => $configuration_id,
         'solr_field' => $field_name,
+        'display_label' => $field_name,
         // Arbitrary large sort weight so it always comes last.
         'weight' => 10000,
         'ajax-volatile' => TRUE,
@@ -428,9 +430,9 @@ function islandora_solr_metadata_management($data) {
 
   if ($data) {
     uasort($data, 'drupal_sort_weight');
-    $delta = count($data);
-    $weight = 1;
-    $map = function ($field) use ($delta, &$weight) {
+    $max_delta = max(count($data), 10);
+    $weight = 0;
+    $map = function ($field) use ($max_delta, &$weight) {
       $value = $weight;
       $weight++;
       return array(
@@ -439,6 +441,7 @@ function islandora_solr_metadata_management($data) {
           '#default_value' => isset($field['remove']) ? $field['remove'] : FALSE,
         ),
         'solr_field_markup' => array('#markup' => filter_xss($field['solr_field'])),
+        'label' => array('#markup' => empty($field['display_label']) ? filter_xss($field['solr_field']) : filter_xss($field['display_label'])),
         'operations' => array(
           'edit' => array(
             '#access' => isset($field['ajax-volatile']) ? !$field['ajax-volatile'] : TRUE,
@@ -452,7 +455,8 @@ function islandora_solr_metadata_management($data) {
           ),
         ),
         'weight' => array(
-          '#type' => 'hidden',
+          '#type' => 'weight',
+          '#delta' => $max_delta,
           '#default_value' => $weight,
         ),
       );
@@ -466,8 +470,9 @@ function islandora_solr_metadata_management($data) {
     '#header' => array(
       t('Remove'),
       t('Solr Field'),
+      t('Label'),
       t('Operations'),
-      '',
+      t('Weight'),
     ),
     'rows' => $rows,
     '#theme' => 'islandora_solr_metadata_management_table',
@@ -492,7 +497,6 @@ function islandora_solr_metadata_config_field_form($form, &$form_state, $config_
     $looked_up = drupal_array_get_nested_value($field_info, (array) $value, $exists);
     return $exists ? $looked_up : $default;
   };
-
   $form['#tree'] = TRUE;
   $form['wrapper'] = array(
     '#type' => 'fieldset',
@@ -505,12 +509,87 @@ function islandora_solr_metadata_config_field_form($form, &$form_state, $config_
     '#title' => t('Display Label'),
     '#description' => t('A human-readable label to display alongside values found for this field.'),
     '#default_value' => $get_default('display_label', $field_name),
+    '#states' => array(
+      'invisible' => array(
+        ':input[name="wrapper[field_aslabel_pre]"]' => array('checked' => TRUE),
+      ),
+    ),
   );
+  $set['field_aslabel_pre'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('I would like to use a Solr field as label'),
+    '#default_value' => $get_default('field_aslabel_pre', 0),
+  );
+  $set['field_aslabel'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Choose which Solr Field you want to use as source for the Label'),
+    '#description' => t('A Solr field can be specified to serve as source for the Label. Must be singled valued'),
+    '#default_value' => $get_default('field_aslabel', ''),
+    '#autocomplete_path' => 'islandora_solr/autocomplete_luke',
+    '#states' => array(
+      'invisible' => array(
+        ':input[name="wrapper[field_aslabel_pre]"]' => array('checked' => FALSE),
+      ),
+    ),
+  );
+
   $set['hyperlink'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Hyperlink?'),
+    '#title' => t('Hyperlink to Solr search?'),
     '#description' => t('Should each value for this field be linked to a search to find objects with the value in this field?'),
-    '#default_value' => $get_default('hyperlink', FALSE),
+    '#default_value' => $get_default('hyperlink', 0),
+  );
+  $set['field_ashyperlink_pre'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Hyperlinking to Solr Field value'),
+    '#description' => t('I would like to use a Solr field as source for the Hyperlink'),
+    '#default_value' => $get_default('field_ashyperlink_pre', 0),
+    '#states' => array(
+      'invisible' => array(
+        ':input[name="wrapper[hyperlink]"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+
+  $set['field_ashyperlink'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Choose which Solr Field you want to use as source for the Hyperkink'),
+    '#description' => t('A Solr field can be specified to serve as URL to hyperlink'),
+    '#default_value' => $get_default('field_ashyperlink', ''),
+    '#autocomplete_path' => 'islandora_solr/autocomplete_luke',
+    '#states' => array(
+      'invisible' => array(
+        array(':input[name="wrapper[field_ashyperlink_pre]"]' => array('checked' => FALSE)),
+        array(':input[name="wrapper[hyperlink]"]' => array('checked' => TRUE)),
+        array(':input[name="wrapper[field_ashyperlink_resolvetoobject_pre]"]' => array('checked' => TRUE)),
+      ),
+    ),
+  );
+  $set['field_ashyperlink_resolvetoobject_pre'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Try to resolve the hyperlink to an Islandora Object Link'),
+    '#description' => t('Instead of using the field value to link, try to resolve via a query first. If the result is a single Islandora Object, link directly to it.'),
+    '#default_value' => $get_default('field_ashyperlink_resolvetoobject_pre', FALSE),
+    '#states' => array(
+      'invisible' => array(
+        array(':input[name="wrapper[field_ashyperlink_pre]"]' => array('checked' => TRUE)),
+        array(':input[name="wrapper[hyperlink]"]' => array('checked' => TRUE)),
+      ),
+    ),
+  );
+  $set['field_ashyperlink_resolvetoobject'] = array(
+    '#type' => 'textfield',
+    '#title' => t("Choose which Solr Field, present in another Object, needs to match this field's value to resolve to a link to an Islandora Object."),
+    '#description' => t('If the value resolves to multiple Objects or no Objects, no link will be generated.'),
+    '#default_value' => $get_default('field_ashyperlink_resolvetoobject', ''),
+    '#autocomplete_path' => 'islandora_solr/autocomplete_luke',
+    '#states' => array(
+      'invisible' => array(
+        array(':input[name="wrapper[field_ashyperlink_resolvetoobject_pre]"]' => array('checked' => FALSE)),
+        array(':input[name="wrapper[hyperlink]"]' => array('checked' => TRUE)),
+        array(':input[name="wrapper[field_ashyperlink_pre]"]' => array('checked' => TRUE)),
+      ),
+    ),
   );
   $set['uri_replacement'] = array(
     '#type' => 'textfield',
@@ -519,6 +598,14 @@ function islandora_solr_metadata_config_field_form($form, &$form_state, $config_
     '#default_value' => $get_default('uri_replacement', ''),
     '#autocomplete_path' => 'islandora_solr/autocomplete_luke',
   );
+  if (islandora_solr_is_date_field($field_name)) {
+    $set['date_format'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Date format'),
+      '#default_value' => $get_default('date_format', ''),
+      '#description' => t('The format of the date, as it will be displayed in the search results. Use <a href="!url" target="_blank">PHP date()</a> formatting. Works best when the date format matches the granularity of the source data. Otherwise it is possible that there will be duplicates displayed.', array('!url' => 'http://php.net/manual/function.date.php')),
+    );
+  }
   // Add in truncation fields for metadata field.
   $truncation_config = array(
     'default_values' => array(
@@ -531,12 +618,89 @@ function islandora_solr_metadata_config_field_form($form, &$form_state, $config_
     'min_wordsafe_length_input_path' => "wrapper[truncation][word_safe]",
   );
   islandora_solr_metadata_add_truncation_to_form($set, $truncation_config);
+  $permissions = $get_default(
+    array('permissions'),
+    array(
+      'enable_permissions' => FALSE,
+      'permissions' => array(),
+    )
+  );
+  islandora_solr_metadata_append_permissions_and_actions($permissions, $set);
 
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save field configuration'),
   );
   return $form;
+}
+
+/**
+ * Generate the element definition for the permission fieldset.
+ *
+ * @param array $permissions
+ *   The selected permissions array containing
+ *   key values:
+ *     'enable_permissions' => bool (enable/disable permissions),
+ *     'permissions' => array (an array of permissions to apply)
+ * @param array $permissions_default
+ *   The permissions to select by default.
+ * @param array $permissions_disable
+ *   Some permissions which we will not allow to be changed (set as disabled in
+ *   the form).
+ *
+ * @return array
+ *   An associative array containing the definition for the permissions
+ *   fieldset.
+ */
+function islandora_solr_metadata_get_admin_permissions_fieldset($permissions, $permissions_default, $permissions_disable) {
+  $permissions_fieldset = array(
+    '#type' => 'fieldset',
+    '#title' => t('Permissions'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    'enable_permissions' => array(
+      '#type' => 'checkbox',
+      '#title' => t('Enable permissions'),
+      '#default_value' => $permissions['enable_permissions'],
+    ),
+    'permissions' => array(
+      '#type' => 'checkboxes',
+      '#title' => t('Permissions'),
+      '#options' => user_roles(),
+      '#default_value' => !empty($permissions['permissions']) ? $permissions['permissions'] : $permissions_default,
+      '#description' => t('Select which roles can access this field.<br /><strong>Note:</strong> checkboxes may be grayed out for roles which do not have permission to search the Solr index.'),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="wrapper[permissions][enable_permissions]"]' => array('checked' => TRUE),
+        ),
+      ),
+    ),
+  );
+  foreach ($permissions_disable as $rid) {
+    $permissions_fieldset['permissions'][$rid] = array(
+      '#disabled' => TRUE,
+    );
+  }
+
+  return $permissions_fieldset;
+}
+
+/**
+ * Utility function to append permissions and actions to the modal.
+ *
+ * @param array $permissions
+ *   The selected permissions array containing
+ *   key values:
+ *     'enable_permissions' => bool (enable/disable permissions),
+ *     'permissions' => array (an array of permissions to apply)
+ * @param array $form
+ *   An array representing the Drupal form, passed by reference.
+ */
+function islandora_solr_metadata_append_permissions_and_actions($permissions, &$form) {
+  module_load_include('inc', 'islandora_solr', 'includes/admin');
+  $permissions_disable = _islandora_solr_permissions_disable();
+  $permissions_default = _islandora_solr_permissions_default();
+  $form['permissions'] = islandora_solr_metadata_get_admin_permissions_fieldset($permissions, $permissions_default, $permissions_disable);
 }
 
 /**
@@ -547,17 +711,34 @@ function islandora_solr_metadata_config_field_form_validate(&$form, &$form_state
     form_error($form['wrapper']['hyperlink'], t('Either hyperlinking or truncation can be used, but not both together on the same field. Disable one.'));
     form_error($form['wrapper']['truncation']['max_length']);
   }
+  if ($form_state['values']['wrapper']['field_aslabel_pre'] && strlen(trim($form_state['values']['wrapper']['field_aslabel'])) == 0) {
+    form_error($form['wrapper']['field_aslabel'], t('Solr field can not be empty.'));
+  }
+  if ($form_state['values']['wrapper']['field_ashyperlink_pre'] && strlen(trim($form_state['values']['wrapper']['field_ashyperlink'])) == 0) {
+    form_error($form['wrapper']['field_ashyperlink'], t('Solr field can not be empty.'));
+  }
 }
 
 /**
  * Form submission handler; save the configuration of the field.
  */
 function islandora_solr_metadata_config_field_form_submit(&$form, &$form_state) {
+
   list($config_id, $escaped_field_name) = $form_state['build_info']['args'];
   $field_name = islandora_solr_restore_slashes($escaped_field_name);
 
   $fields = islandora_solr_metadata_get_fields($config_id);
   $field_info = $fields[$field_name];
+  // Clean some conditional wrapper values from $form_state.
+  if ($form_state['values']['wrapper']['field_aslabel_pre'] == FALSE) {
+    unset($form_state['values']['wrapper']['field_aslabel']);
+  }
+  if ($form_state['values']['wrapper']['field_ashyperlink_pre'] == FALSE) {
+    unset($form_state['values']['wrapper']['field_ashyperlink']);
+  }
+  if ($form_state['values']['wrapper']['field_ashyperlink_resolvetoobject_pre'] == FALSE) {
+    unset($form_state['values']['wrapper']['field_ashyperlink_resolvetoobject']);
+  }
 
   $field_info = $form_state['values']['wrapper'] + $field_info;
   islandora_solr_metadata_update_fields($config_id, array($field_info));
@@ -567,13 +748,11 @@ function islandora_solr_metadata_config_field_form_submit(&$form, &$form_state) 
   );
 }
 
-
 /**
  * Generates the truncation field settings section to attach to a form.
  *
  * @param array $form
  *   The location in the form that the truncation should be appended to.
- *
  * @param array $field_config
  *   An associative array containing the following:
  *   - default_values
@@ -582,7 +761,7 @@ function islandora_solr_metadata_config_field_form_submit(&$form, &$form_state) 
  *      - word_safe
  *      - ellipsis
  *      - min_wordsafe_length
- *   - min_wordsafe_length_input_path
+ *   - min_wordsafe_length_input_path.
  */
 function islandora_solr_metadata_add_truncation_to_form(&$form, $field_config) {
   $form['truncation'] = array(
