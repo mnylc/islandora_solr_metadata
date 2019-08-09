@@ -439,7 +439,7 @@ function islandora_solr_metadata_resolvevalue_to_pid($value, $solrfield) {
   $query_processor->executeQuery(FALSE);
   $num_found = $query_processor->islandoraSolrResult['response']['numFound'];
   if ($num_found == 1) {
-    $pid = $query_processor->islandoraSolrResult['response']['objects']['PID'];
+    $pid = $query_processor->islandoraSolrResult['response']['objects'][0]['PID'];
   }
   return $pid;
 }
