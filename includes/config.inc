@@ -569,7 +569,7 @@ function islandora_solr_metadata_config_field_form($form, &$form_state, $config_
     '#type' => 'checkbox',
     '#title' => t('Try to resolve the hyperlink to an Islandora Object Link'),
     '#description' => t('Instead of linking directly to a Solr Search, try to resolve the query first. If the result is a single Object link directly to it.'),
-    '#default_value' => $get_default('field_ashyperlink_resolvetoobject', FALSE),
+    '#default_value' => $get_default('field_ashyperlink_resolvetoobject_pre', FALSE),
     '#states' => array(
       'invisible' => array(
         array(':input[name="wrapper[field_ashyperlink_pre]"]' => array('checked' => TRUE)),
@@ -735,6 +735,9 @@ function islandora_solr_metadata_config_field_form_submit(&$form, &$form_state) 
   }
   if ($form_state['values']['wrapper']['field_ashyperlink_pre'] == FALSE) {
     unset($form_state['values']['wrapper']['field_ashyperlink']);
+  }
+  if ($form_state['values']['wrapper']['field_ashyperlink_resolvetoobject_pre'] == FALSE) {
+    unset($form_state['values']['wrapper']['field_ashyperlink_resolvetoobject']);
   }
 
   $field_info = $form_state['values']['wrapper'] + $field_info;
