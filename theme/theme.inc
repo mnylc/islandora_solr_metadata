@@ -322,16 +322,26 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, array &$so
             // Try to resolve this fields value to an Object PID using a
             // Passed field as condition
             elseif ($field_config['field_ashyperlink_resolvetoobject_pre'] == 1) {
-              $pid = islandora_solr_metadata_resolvevalue_to_pid($value, $field_config['field_ashyperlink_resolvetoobject']);
-              if ($pid) {
-                return l($value, "islandora/object/{$pid}", array(
-                  'attributes' => array(
-                    'target' => '_blank',
-                  ),
-                ));
+              // Don't try to resolve if no target field was given.
+              if (!empty($field_config['field_ashyperlink_resolvetoobject'])) {
+                $pid = islandora_solr_metadata_resolvevalue_to_pid(
+                  $value,
+                  $field_config['field_ashyperlink_resolvetoobject']
+                );
+                if ($pid) {
+                  return l(
+                    $value,
+                    "islandora/object/{$pid}",
+                    [
+                      'attributes' => [
+                        'target' => '_blank',
+                      ],
+                    ]
+                  );
+                }
+                // Deal with non existing link or field for document.
+                return $value;
               }
-              // Deal with non existing link or field for document.
-              return $value;
             }
             else {
               $solr_query = format_string('!field:!value', array(
