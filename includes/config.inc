@@ -550,6 +550,7 @@ function islandora_solr_metadata_config_field_form($form, &$form_state, $config_
       ),
     ),
   );
+
   $set['field_ashyperlink'] = array(
     '#type' => 'textfield',
     '#title' => t('Choose which Solr Field you want to use as source for the Hyperkink'),
@@ -560,6 +561,33 @@ function islandora_solr_metadata_config_field_form($form, &$form_state, $config_
       'invisible' => array(
         array(':input[name="wrapper[field_ashyperlink_pre]"]' => array('checked' => FALSE)),
         array(':input[name="wrapper[hyperlink]"]' => array('checked' => TRUE)),
+        array(':input[name="wrapper[field_ashyperlink_resolvetoobject_pre]"]' => array('checked' => TRUE)),
+      ),
+    ),
+  );
+  $set['field_ashyperlink_resolvetoobject_pre'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Try to resolve the hyperlink to an Islandora Object Link'),
+    '#description' => t('Instead of linking directly to a Solr Search, try to resolve the query first. If the result is a single Object link directly to it.'),
+    '#default_value' => $get_default('field_ashyperlink_resolvetoobject', FALSE),
+    '#states' => array(
+      'invisible' => array(
+        array(':input[name="wrapper[field_ashyperlink_pre]"]' => array('checked' => TRUE)),
+        array(':input[name="wrapper[hyperlink]"]' => array('checked' => TRUE)),
+      ),
+    ),
+  );
+  $set['field_ashyperlink_resolvetoobject'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Choose which Solr Field present in another Object needs to match this fields value to resolve to a Link to that Object.'),
+    '#description' => t('If the value resolves to multiple Objects the link will fallback to the default behaviour.'),
+    '#default_value' => $get_default('field_ashyperlink_resolvetoobject', ''),
+    '#autocomplete_path' => 'islandora_solr/autocomplete_luke',
+    '#states' => array(
+      'invisible' => array(
+        array(':input[name="wrapper[field_ashyperlink_resolvetoobject_pre]"]' => array('checked' => FALSE)),
+        array(':input[name="wrapper[hyperlink]"]' => array('checked' => TRUE)),
+        array(':input[name="wrapper[field_ashyperlink_pre]"]' => array('checked' => TRUE)),
       ),
     ),
   );

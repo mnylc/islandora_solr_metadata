@@ -242,6 +242,8 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, array &$so
             'hyperlink' => 0,
             'field_ashyperlink_pre' => 0,
             'field_ashyperlink' => '',
+            'field_ashyperlink_resolvetoobject_pre' => 0,
+            'field_ashyperlink_resolvetoobject' => '',
             'field_aslabel_pre' => 0,
             'field_aslabel' => '',
             'formatter' => NULL,
@@ -292,7 +294,9 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, array &$so
             $value = call_user_func($field_config['formatter'], $value);
           }
           if (($field_config['hyperlink'] == 1 ||
-            $field_config['field_ashyperlink_pre'] == 1) &&
+            $field_config['field_ashyperlink_pre'] == 1 ||
+            $field_config['field_ashyperlink_resolvetoobject_pre'] == 1
+            ) &&
             trim($value)) {
             if (variable_get('islandora_solr_metadata_omit_empty_values', FALSE) && !trim($value)) {
               // Avoid generating markup (throwing off the "empty" check).
@@ -307,6 +311,20 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, array &$so
 
               if (count($hyperlink)) {
                 return l($value, $hyperlink[0], array(
+                  'attributes' => array(
+                    'target' => '_blank',
+                  ),
+                ));
+              }
+              // Deal with non existing link or field for document.
+              return $value;
+            }
+            // Try to resolve this fields value to an Object PID using a
+            // Passed field as condition
+            elseif ($field_config['field_ashyperlink_resolvetoobject_pre'] == 1) {
+              $pid = islandora_solr_metadata_resolvevalue_to_pid($value, $field_config['field_ashyperlink_resolvetoobject']);
+              if ($pid) {
+                return l($value, "islandora/object/{$pid}", array(
                   'attributes' => array(
                     'target' => '_blank',
                   ),
@@ -371,7 +389,7 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, array &$so
         );
         if (($field['field_aslabel_pre'] == 1) && !empty(trim($solr_results_doc[$field['field_aslabel']]))) {
           // Use  $field['field_aslabel'] solr field as label,
-          // if that is exists but is empty default to the original label.
+          // if that exists but is empty default to the original label.
           $possible_label = isset($solr_results_doc[$field['field_aslabel']]) ? (array) $solr_results_doc[$field['field_aslabel']] : (array) $field['display_label'];
           $field['display_label'] = trim(reset($possible_label));
         }
@@ -401,4 +419,27 @@ function islandora_solr_metadata_query_fields(AbstractObject $object, array &$so
       return FALSE;
     }
   }
+}
+
+
+/**
+ * Given a value and a Solr Field tries to resolve to a unique Object PID.
+ *
+ * @param $value string
+ * @param $solrfield string
+ *
+ * @return mixed
+ *  Null if not found/too many or the PID (string) if a single match.
+ */
+function islandora_solr_metadata_resolvevalue_to_pid($value, $solrfield) {
+  $pid = NULL;
+  $query_processor = new IslandoraSolrQueryProcessor();
+  $query_processor->solrQuery = $solrfield.':"' . $value . '"';
+  $query_processor->solrParams['fl'] = 'PID';
+  $query_processor->executeQuery(FALSE);
+  $num_found = $query_processor->islandoraSolrResult['response']['numFound'];
+  if ($num_found == 1) {
+    $pid = $query_processor->islandoraSolrResult['response']['objects']['PID'];
+  }
+  return $pid;
 }
